@@ -22,5 +22,5 @@ VirtualAllocEx="kernel32:VirtualAllocEx"
 QueueUserAPC="kernel32.QueueUserAPC"
 
 [Networking]
-UrlDownloadToFile="shell32.ShellExecute"
+UrlDownloadToFile="urlmon.UrlDownloadToFile"
 ```
