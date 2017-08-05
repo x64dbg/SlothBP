@@ -117,6 +117,7 @@ static void refreshStatus(CBTYPE type, const char* modulename)
             if(api.enabled != oldenabled) //only waste GUI time if an update is needed
                 _plugin_menuentrysetchecked(pluginHandle, int(i), api.enabled);
         }
+		return;
     }
 
     for(size_t i = 0; i < apis.size(); ++i)
