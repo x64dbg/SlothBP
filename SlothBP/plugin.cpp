@@ -1,6 +1,7 @@
 #include "plugin.h"
 #include "Utf8Ini.h"
 #include "resource.h"
+#include "strUtil.h"
 
 //Original idea by https://github.com/blaquee
 
@@ -98,33 +99,61 @@ static bool SetupMenus()
     return true;
 }
 
-static void refreshStatus()
+static void refreshStatus(CBTYPE type, const char* modulename)
 {
-    //TODO: possibly do this in a separate thread if things get laggy
-    for(size_t i = 0; i < apis.size(); i++)
+
+    if(!modulename)
+        return;
+    if(type == CB_STOPDEBUG)
     {
-        auto & api = apis[i];
-        auto addr = Eval(api.apiName.c_str());
-        auto oldenabled = api.enabled;
-        api.enabled = addr ? (DbgGetBpxTypeAt(addr) & bp_normal) != 0 : false;
-        if(api.enabled != oldenabled) //only waste GUI time if an update is needed
-            _plugin_menuentrysetchecked(pluginHandle, int(i), api.enabled);
+        // Check for any invalid entries to remove
+        // TODO: find a better way to do this if needed.
+        for(size_t i = 0; i < apis.size(); ++i)
+        {
+            auto & api = apis[i];
+            auto addr = Eval(api.apiName.c_str());
+            auto oldenabled = api.enabled;
+            api.enabled = addr ? (DbgGetBpxTypeAt(addr) & bp_normal) != 0 : false;
+            if(api.enabled != oldenabled) //only waste GUI time if an update is needed
+                _plugin_menuentrysetchecked(pluginHandle, int(i), api.enabled);
+        }
+    }
+
+    for(size_t i = 0; i < apis.size(); ++i)
+    {
+        //determine if we care about this module.
+        auto modnameList = split(apis[i].apiName, ':');
+        auto modname = modnameList.at(0);
+        if(strstr(modulename, modname.c_str()) == NULL)
+        {
+            //skip this module, we don't need to incur cycles to resolve it
+            continue;
+        }
+        else
+        {
+            auto & api = apis[i];
+            auto addr = Eval(api.apiName.c_str());
+            auto oldenabled = api.enabled;
+            api.enabled = addr ? (DbgGetBpxTypeAt(addr) & bp_normal) != 0 : false;
+            if(api.enabled != oldenabled) //only waste GUI time if an update is needed
+                _plugin_menuentrysetchecked(pluginHandle, int(i), api.enabled);
+        }
     }
 }
 
 PLUG_EXPORT void CBCREATEPROCESS(CBTYPE cbType, PLUG_CB_CREATEPROCESS* info)
 {
-    refreshStatus();
+    refreshStatus(cbType, info->DebugFileName);
 }
 
 PLUG_EXPORT void CBLOADDLL(CBTYPE cbType, PLUG_CB_LOADDLL* info)
 {
-    refreshStatus();
+    refreshStatus(cbType, info->modname);
 }
 
 PLUG_EXPORT void CBSTOPDEBUG(CBTYPE cbType, PLUG_CB_STOPDEBUG* info)
 {
-    refreshStatus();
+    refreshStatus(cbType, nullptr);
 }
 
 PLUG_EXPORT void CBMENUENTRY(CBTYPE cbType, PLUG_CB_MENUENTRY* info)
