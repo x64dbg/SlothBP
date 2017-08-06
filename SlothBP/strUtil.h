@@ -2,6 +2,7 @@
 #include <vector>
 #include <algorithm>
 #include <sstream>
+#include <iterator>
 
 // from: https://stackoverflow.com/questions/236129/most-elegant-way-to-split-a-string
 template<typename Out>
