@@ -15,10 +15,13 @@ struct API
 
 enum MenuEntries
 {
+    MENU_RELOAD = 99999,
     MENU_ABOUT = 100000
 };
 
 static std::vector<API> apis;
+
+std::wstring GetConfigFile();
 
 static bool LoadApis(const wchar_t* apiFile)
 {
@@ -79,13 +82,20 @@ static bool SetupMenus()
         {
             auto cMenu = _plugin_menuadd(hMenu, api.category.c_str());
             if(cMenu == -1)
+            {
+                _plugin_logputs("[" PLUGIN_NAME "] Failed to add menu item");
                 return false;
+            }
+                
             categories[api.category] = cMenu;
         }
         auto cMenu = categories[api.category];
         auto hEntry = int(i);
         if(!_plugin_menuaddentry(cMenu, hEntry, api.bpName.c_str()))
+        {
+            _plugin_logputs("[" PLUGIN_NAME "] Failed to add sub menu item");
             return false;
+        }
         _plugin_menuentrysetchecked(pluginHandle, hEntry, false);
     }
     auto hResInfo = FindResourceW(hInst, MAKEINTRESOURCEW(IDB_SLOTH), L"PNG");
@@ -95,13 +105,38 @@ static bool SetupMenus()
     icon.data = pData;
     icon.size = SizeofResource(hInst, hResInfo);
     _plugin_menuseticon(hMenu, &icon);
+    _plugin_menuaddentry(hMenu, MENU_RELOAD, "Reload Config");
     _plugin_menuaddentry(hMenu, MENU_ABOUT, "About");
     return true;
 }
 
+bool ReloadConfig()
+{
+    bool ret = true;
+
+    // Clear the menu
+    if(_plugin_menuclear(hMenu))
+    {
+        // Load the API file
+        if(LoadApis(GetConfigFile().c_str()))
+        {
+            // Setup the menu items for new config
+            if(SetupMenus())
+                return ret;
+            else
+            {
+                _plugin_logputs("SLOTHBP Menu setup failed");
+                ret = false;
+            }
+        }
+    }
+    return ret;
+}
+
 static void refreshStatus(CBTYPE type, const char* modulename)
 {
-
+    if(apis.empty())
+        return;
     if(!modulename)
         return;
     if(type == CB_STOPDEBUG)
@@ -205,6 +240,11 @@ PLUG_EXPORT void CBMENUENTRY(CBTYPE cbType, PLUG_CB_MENUENTRY* info)
             _plugin_logputs("[" PLUGIN_NAME "] Not debugging...");
         _plugin_menuentrysetchecked(pluginHandle, info->hEntry, api.enabled);
     }
+    else if(info->hEntry == MENU_RELOAD)
+    {
+        if(!ReloadConfig())
+            MessageBoxW(GuiGetWindowHandle(), L"Error Loading new config", L"Error", MB_ICONERROR);
+    }
     else if(info->hEntry == MENU_ABOUT)
         MessageBoxW(GuiGetWindowHandle(), L"SlothBP\n\nIcon from shareicon.net", L"About", MB_ICONINFORMATION);
     else
@@ -214,17 +254,31 @@ PLUG_EXPORT void CBMENUENTRY(CBTYPE cbType, PLUG_CB_MENUENTRY* info)
 #define EXPAND(x) L ## x
 #define DOWIDEN(x) EXPAND(x)
 
+std::wstring GetConfigFile()
+{
+    wchar_t apiFileName[MAX_PATH] = L"";
+    GetModuleFileNameW(hInst, apiFileName, _countof(apiFileName));
+    auto l = wcsrchr(apiFileName, L'\\');
+    if(l)
+        *l = L'\0';
+    wcsncat_s(apiFileName, L"\\" DOWIDEN(PLUGIN_NAME) L".ini", _TRUNCATE);
+    return std::wstring(apiFileName);
+}
+
 bool pluginInit(PLUG_INITSTRUCT* initStruct)
 {
+    /*
     wchar_t apiFile[MAX_PATH] = L"";
     GetModuleFileNameW(hInst, apiFile, _countof(apiFile));
     auto l = wcsrchr(apiFile, L'\\');
     if(l)
         *l = L'\0';
     wcsncat_s(apiFile, L"\\" DOWIDEN(PLUGIN_NAME) L".ini", _TRUNCATE);
-    if(!LoadApis(apiFile))
+    */
+    const wchar_t * apiFileName = GetConfigFile().c_str();
+    if(!LoadApis(apiFileName))
     {
-        _plugin_logprintf("[" PLUGIN_NAME "] Failed to load API file %S...\n", apiFile);
+        _plugin_logprintf("[" PLUGIN_NAME "] Failed to load API file %S...\n", apiFileName);
         return false;
     }
     return true;
