@@ -20,8 +20,7 @@ enum MenuEntries
 };
 
 static std::vector<API> apis;
-
-std::wstring GetConfigFile();
+static wchar_t apiFile[MAX_PATH];
 
 static bool LoadApis(const wchar_t* apiFile)
 {
@@ -118,7 +117,7 @@ bool ReloadConfig()
     if(_plugin_menuclear(hMenu))
     {
         // Load the API file
-        if(LoadApis(GetConfigFile().c_str()))
+        if(LoadApis(apiFile))
         {
             // Setup the menu items for new config
             if(SetupMenus())
@@ -254,31 +253,17 @@ PLUG_EXPORT void CBMENUENTRY(CBTYPE cbType, PLUG_CB_MENUENTRY* info)
 #define EXPAND(x) L ## x
 #define DOWIDEN(x) EXPAND(x)
 
-std::wstring GetConfigFile()
-{
-    wchar_t apiFileName[MAX_PATH] = L"";
-    GetModuleFileNameW(hInst, apiFileName, _countof(apiFileName));
-    auto l = wcsrchr(apiFileName, L'\\');
-    if(l)
-        *l = L'\0';
-    wcsncat_s(apiFileName, L"\\" DOWIDEN(PLUGIN_NAME) L".ini", _TRUNCATE);
-    return std::wstring(apiFileName);
-}
-
 bool pluginInit(PLUG_INITSTRUCT* initStruct)
 {
-    /*
-    wchar_t apiFile[MAX_PATH] = L"";
     GetModuleFileNameW(hInst, apiFile, _countof(apiFile));
     auto l = wcsrchr(apiFile, L'\\');
     if(l)
         *l = L'\0';
     wcsncat_s(apiFile, L"\\" DOWIDEN(PLUGIN_NAME) L".ini", _TRUNCATE);
-    */
-    const wchar_t * apiFileName = GetConfigFile().c_str();
-    if(!LoadApis(apiFileName))
+
+    if(!LoadApis(apiFile))
     {
-        _plugin_logprintf("[" PLUGIN_NAME "] Failed to load API file %S...\n", apiFileName);
+        _plugin_logprintf("[" PLUGIN_NAME "] Failed to load API file %S...\n", apiFile);
         return false;
     }
     return true;
