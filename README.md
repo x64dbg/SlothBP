@@ -8,10 +8,10 @@ Collaborative Breakpoint Manager for x64dbg.
 
 ```
 [Memory]
-VirtualAlloc="kernel32:VirtualAlloc"
+VirtualAlloc="kernel32.VirtualAlloc"
 
 [Code Injection]
-SetWindowsHookEx="user32:SetWindowsHookEx"
+SetWindowsHookEx="user32.SetWindowsHookEx"
 
 [Networking]
 UrlDownloadToFile="urlmon.UrlDownloadToFile"
